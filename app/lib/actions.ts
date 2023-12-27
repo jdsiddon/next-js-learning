@@ -21,6 +21,7 @@ const FormSchema = z.object({
   date: z.string(),
 })
 
+// State of the form.
 export type State = {
   errors?: {
     customerId?: string[];
@@ -29,7 +30,6 @@ export type State = {
   };
   message?: string | null;
 }
-
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true })
 
@@ -40,7 +40,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
     amount: formData.get('amount'),
     status: formData.get('status')
   });
-  
+
   // Form validation failed
   if (!validatedFields.success) {
     return {
@@ -75,13 +75,23 @@ export async function createInvoice(prevState: State, formData: FormData) {
 // Logic to update invoices
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
-export async function updateInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = UpdateInvoice.parse({
+export async function updateInvoice(id: string, prevState: State, formData: FormData) {
+  console.log(prevState, id, formData)
+
+  const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status')
   });
 
+  if(!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Update Invoice'
+    };
+  }
+
+  const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
 
   try {
@@ -102,8 +112,6 @@ export async function updateInvoice(id: string, formData: FormData) {
 
 
 export async function deleteInvoice(id: string, formData: FormData) {
-  throw new Error("Failed to delete invoice!");
-
   try {
     await sql`
       DELETE FROM invoices
